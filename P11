@@ -1,0 +1,64 @@
+def display_menu():
+    """Display the main menu for the user."""
+    print("\nTo-Do List Application")
+    print("1. Add Task")
+    print("2. View Tasks")
+    print("3. Delete Task")
+    print("4. Quit")
+
+def add_task(tasks):
+    """Add a task to the task list."""
+    task = input("Enter a task to add: ")
+    tasks.append(task)
+    print(f'Task "{task}" added.')
+
+def view_tasks(tasks):
+    """Display all tasks in the task list."""
+    if not tasks:
+        print("No tasks to view!")
+        return
+    print("\nTasks:")
+    for i, task in enumerate(tasks, start=1):
+        print(f"{i}. {task}")
+
+def delete_task(tasks):
+    """Delete a task from the task list."""
+    if not tasks:
+        print("No tasks to delete!")
+        return
+    try:
+        task_num = int(input("Enter the task number to delete: "))
+        if task_num < 1 or task_num > len(tasks):
+            print("Invalid task number!")
+            return
+        task = tasks.pop(task_num - 1)
+        print(f'Task "{task}" deleted.')
+    except ValueError:
+        print("Invalid input! Please enter a number.")
+    except IndexError:
+        print("Invalid task number!")
+
+def main():
+    """Main function to run the To-Do List application."""
+    tasks = []
+    while True:
+        display_menu()
+        try:
+            choice = int(input("Choose an option: "))
+            if choice == 1:
+                add_task(tasks)
+            elif choice == 2:
+                view_tasks(tasks)
+            elif choice == 3:
+                delete_task(tasks)
+            elif choice == 4:
+                print("Goodbye!")
+                break
+            else:
+                print("Invalid option! Please choose again.")
+        except ValueError:
+            print("Invalid input! Please enter a valid number.")
+
+if __name__ == "__main__":
+    main()
+
