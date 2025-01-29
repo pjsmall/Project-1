@@ -1,0 +1,165 @@
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from flask_marshmallow import Marshmallow
+
+# Initialize the app
+app = Flask(__name__)
+
+# Database configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:<YOUR PASSWORD>@localhost/ecommerce_api'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialize the database and Marshmallow
+db = SQLAlchemy(app)
+ma = Marshmallow(app)
+
+# User Table
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(100), nullable=False)
+    address = db.Column(db.String(200), nullable=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    
+    # One-to-many relationship: User can have many orders
+    orders = db.relationship('Order', backref='user', lazy=True)
+
+    def __init__(self, name, address, email):
+        self.name = name
+        self.address = address
+        self.email = email
+
+# Order Table
+class Order(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    order_date = db.Column(db.DateTime, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    # Many-to-many relationship through the Order_Product table
+    products = db.relationship('Product', secondary='order_product', backref='orders')
+
+    def __init__(self, order_date, user_id):
+        self.order_date = order_date
+        self.user_id = user_id
+
+# Product Table
+class Product(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    product_name = db.Column(db.String(100), nullable=False)
+    price = db.Column(db.Float, nullable=False)
+
+    def __init__(self, product_name, price):
+        self.product_name = product_name
+        self.price = price
+
+# Order_Product Association Table (Many-to-many)
+class OrderProduct(db.Model):
+    __tablename__ = 'order_product'
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), primary_key=True)
+    
+    def __init__(self, order_id, product_id):
+        self.order_id = order_id
+        self.product_id = product_id
+
+# User Schema
+class UserSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = User
+
+# Product Schema
+class ProductSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Product
+
+# Order Schema
+class OrderSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Order
+
+from flask import request, jsonify
+
+# Create User
+@app.route('/users', methods=['POST'])
+def add_user():
+    name = request.json['name']
+    address = request.json.get('address')
+    email = request.json['email']
+
+    new_user = User(name, address, email)
+    db.session.add(new_user)
+    db.session.commit()
+
+    return user_schema.jsonify(new_user), 201
+
+# Get all Users
+@app.route('/users', methods=['GET'])
+def get_users():
+    users = User.query.all()
+    return users_schema.jsonify(users)
+
+# Get User by ID
+@app.route('/users/<id>', methods=['GET'])
+def get_user(id):
+    user = User.query.get(id)
+    if user:
+        return user_schema.jsonify(user)
+    return jsonify({"message": "User not found"}), 404
+
+# Create Product
+@app.route('/products', methods=['POST'])
+def add_product():
+    product_name = request.json['product_name']
+    price = request.json['price']
+
+    new_product = Product(product_name, price)
+    db.session.add(new_product)
+    db.session.commit()
+
+    return product_schema.jsonify(new_product), 201
+
+# Get all Products
+@app.route('/products', methods=['GET'])
+def get_products():
+    products = Product.query.all()
+    return products_schema.jsonify(products)
+
+# Create Order
+@app.route('/orders', methods=['POST'])
+def create_order():
+    order_date = request.json['order_date']
+    user_id = request.json['user_id']
+    
+    new_order = Order(order_date, user_id)
+    db.session.add(new_order)
+    db.session.commit()
+
+    return order_schema.jsonify(new_order), 201
+
+# Add Product to Order
+@app.route('/orders/<order_id>/add_product/<product_id>', methods=['GET'])
+def add_product_to_order(order_id, product_id):
+    order = Order.query.get(order_id)
+    product = Product.query.get(product_id)
+
+    if order and product:
+        if product not in order.products:
+            order.products.append(product)
+            db.session.commit()
+            return order_schema.jsonify(order)
+        return jsonify({"message": "Product already in this order"}), 400
+
+    return jsonify({"message": "Order or Product not found"}), 404
+
+# Get all Products in an Order
+@app.route('/orders/<order_id>/products', methods=['GET'])
+def get_products_in_order(order_id):
+    order = Order.query.get(order_id)
+    if order:
+        return products_schema.jsonify(order.products)
+    return jsonify({"message": "Order not found"}), 404
+
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()  # Create all tables in the database
+    app.run(debug=True)
+
