@@ -1,0 +1,36 @@
+import { useState } from "react";
+import ProductList from "./components/ProductList";
+import "./App.css";
+
+const App = () => {
+  // State holding the product list
+  const [products] = useState([
+    { id: 1, name: "Laptop", price: "$999", description: "Powerful laptop with high performance." },
+    { id: 2, name: "Smartphone", price: "$599", description: "Latest smartphone with advanced features." },
+    { id: 3, name: "Headphones", price: "$199", description: "Noise-canceling over-ear headphones." },
+  ]);
+
+  return (
+    <div className="app-container">
+      <h1>Product Showcase</h1>
+      <ProductList products={products} />
+    </div>
+  );
+};
+
+export default App;
+
+import ProductItem from "./ProductItem";
+import "./ProductList.css";
+
+const ProductList = ({ products }) => {
+  return (
+    <div className="product-list">
+      {products.map((product) => (
+        <ProductItem key={product.id} product={product} />
+      ))}
+    </div>
+  );
+};
+
+export default ProductList;
